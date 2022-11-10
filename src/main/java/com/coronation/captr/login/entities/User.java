@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 public class User extends BaseEntity {
 
     @Column(name = "FIRST_NAME", nullable = false)
-    private String firstname;
+    private String firstName;
 
     @Column(name = "LAST_NAME", nullable = false)
     private String lastName;
