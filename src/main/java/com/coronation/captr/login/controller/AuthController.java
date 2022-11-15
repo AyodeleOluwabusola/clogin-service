@@ -1,6 +1,5 @@
 package com.coronation.captr.login.controller;
 
-import com.coronation.captr.login.enums.IResponseEnum;
 import com.coronation.captr.login.interfaces.IResponse;
 import com.coronation.captr.login.pojo.AuthRequest;
 import com.coronation.captr.login.pojo.AuthResponse;
@@ -9,6 +8,7 @@ import com.coronation.captr.login.pojo.Response;
 import com.coronation.captr.login.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,10 +33,15 @@ public class AuthController {
     public ResponseEntity<AuthResponse> authenticateUser(@RequestBody AuthRequest request) {
 
         AuthResponse authResponse = authService.handleUserLogin(request);
-        ResponseEntity<AuthResponse> responseEntity = ResponseEntity.ok(authResponse);
-        responseEntity.getHeaders().add(HttpHeaders.AUTHORIZATION, authResponse.getToken());
 
-        return responseEntity;
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.set(HttpHeaders.AUTHORIZATION,
+                authResponse.getToken());
+
+
+
+
+        return new ResponseEntity<>(authResponse, responseHeaders, HttpStatus.OK);
 
     }
 

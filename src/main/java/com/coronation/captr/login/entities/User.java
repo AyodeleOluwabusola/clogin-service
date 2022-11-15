@@ -3,10 +3,16 @@ package com.coronation.captr.login.entities;
 import lombok.Getter;
 import lombok.Setter;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author toyewole
@@ -33,7 +39,10 @@ public class User extends BaseEntity {
     @Column(name = "CONFIRMATION_TIMESTAMP")
     private LocalDateTime emailConfirmationTimestamp;
 
-    @Column(name = "CONFIRMATION_CODE")
-    private String confirmationCode;
+    @ManyToMany(cascade = {CascadeType.ALL})
+    @JoinTable(name = "CT_USER_PRIVILEGE",
+            joinColumns = {@JoinColumn(name = "user_id")},
+            inverseJoinColumns = {@JoinColumn(name = "privilege_id")})
+    private Set<CTPrivilege> privilegeList = new HashSet<>();
 
 }
