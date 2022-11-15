@@ -39,8 +39,6 @@ public class AuthController {
                 authResponse.getToken());
 
 
-
-
         return new ResponseEntity<>(authResponse, responseHeaders, HttpStatus.OK);
 
     }
