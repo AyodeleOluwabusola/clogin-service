@@ -1,5 +1,6 @@
 package com.coronation.captr.login.service;
 
+import com.coronation.captr.login.entities.CTPrivilege;
 import com.coronation.captr.login.entities.MessageTrail;
 import com.coronation.captr.login.entities.User;
 import com.coronation.captr.login.enums.IResponseEnum;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * @author toyewole
@@ -74,6 +76,7 @@ public class AuthService {
                             authResponse.setCode(IResponseEnum.SUCCESS.getCode());
                             authResponse.setDescription("Login successful");
                             authResponse.setToken(handleTokenGeneration(user));
+                            authResponse.setPrivileges(user.getPrivilegeList().stream().map(CTPrivilege::getCode).collect(Collectors.toList()));
 
                         },
                         () -> {
@@ -115,7 +118,6 @@ public class AuthService {
 
         if (otpOptional.isPresent()) {
             return iUserRespository.findByEmail(email)
-                    .filter(user -> passwordEncoder.matches(code, user.getConfirmationCode()))
                     .map(user -> IResponseEnum.SUCCESS)
                     .orElse(IResponseEnum.INVALID_TOKEN);
         }
