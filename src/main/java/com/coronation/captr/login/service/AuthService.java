@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -121,7 +122,7 @@ public class AuthService {
 
         if (otpOptional.isPresent()) {
 
-            IResponse response =  iUserRespository.findByEmail(email)
+            IResponse response = iUserRespository.findByEmail(email)
                     .map(user -> IResponseEnum.SUCCESS)
                     .orElse(IResponseEnum.INVALID_TOKEN);
 
@@ -182,7 +183,7 @@ public class AuthService {
                     resp.setCode(IResponseEnum.SUCCESS.getCode());
                     resp.setDescription("Password changed successfully!!");
 
-                    sendActivityLog("PASSWORD CHANGE",changePasswordReq.getEmail(), resp.getDescription() );
+                    sendActivityLog("PASSWORD CHANGE", changePasswordReq.getEmail(), resp.getDescription());
                     return resp;
                 }).orElse(resp);
 
@@ -213,6 +214,7 @@ public class AuthService {
 
     }
 
+    @Async
     private void sendEmailConfirmation(User user, String token) {
         MessagePojo message = new MessagePojo();
 
@@ -227,19 +229,27 @@ public class AuthService {
 
         message.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
 
-        rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
-
+        try {
+            rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
+        } catch (Exception e) {
+            log.debug("Error occurred while pushing email confirmation", e);
+        }
     }
 
-    private void sendActivityLog(String activityType, String email, String description) {
+    @Async
+    public void sendActivityLog(String activityType, String email, String description) {
+
         ActivityLog activityLog = new ActivityLog();
         activityLog.setActivityType(activityType);
         activityLog.setDescription(description);
         activityLog.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
         activityLog.setEmailAddress(email);
-
-        rabbitTemplate.convertAndSend(appProperties.getActivityExchange(), appProperties.getActivityLogRoutingKey(), activityLog);
-        log.debug("Activity Logged successfully");
+        try {
+            rabbitTemplate.convertAndSend(appProperties.getActivityExchange(), appProperties.getActivityLogRoutingKey(), activityLog);
+            log.debug("Activity Logged successfully");
+        } catch (Exception e) {
+            log.debug("Error occurred while logging activity", e);
+        }
     }
 
 }
