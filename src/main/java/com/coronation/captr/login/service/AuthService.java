@@ -5,6 +5,7 @@ import com.coronation.captr.login.entities.MessageTrail;
 import com.coronation.captr.login.entities.User;
 import com.coronation.captr.login.enums.IResponseEnum;
 import com.coronation.captr.login.interfaces.IResponse;
+import com.coronation.captr.login.pojo.ActivityLog;
 import com.coronation.captr.login.pojo.AuthRequest;
 import com.coronation.captr.login.pojo.AuthResponse;
 import com.coronation.captr.login.pojo.ChangePasswordReq;
@@ -19,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,6 +80,8 @@ public class AuthService {
                             authResponse.setToken(handleTokenGeneration(user));
                             authResponse.setPrivileges(user.getPrivilegeList().stream().map(CTPrivilege::getCode).collect(Collectors.toList()));
 
+                            sendActivityLog("LOGGED_IN", user.getEmail(), authResponse.getDescription());
+
                         },
                         () -> {
                             authResponse.setCode(IResponseEnum.ERROR.getCode());
@@ -117,9 +121,15 @@ public class AuthService {
                 .filter(trail -> StringUtils.equals(code, trail.getCode()));
 
         if (otpOptional.isPresent()) {
-            return iUserRespository.findByEmail(email)
+
+            IResponse response = iUserRespository.findByEmail(email)
                     .map(user -> IResponseEnum.SUCCESS)
                     .orElse(IResponseEnum.INVALID_TOKEN);
+
+            sendActivityLog("EMAIL_CONFIRMATION", email, response.getDescription());
+
+            return response;
+
         }
 
 
@@ -172,6 +182,8 @@ public class AuthService {
                             passwordEncoder.encode(changePasswordReq.getConfirmPassword()), changePasswordReq.getEmail());
                     resp.setCode(IResponseEnum.SUCCESS.getCode());
                     resp.setDescription("Password changed successfully!!");
+
+                    sendActivityLog("PASSWORD_CHANGE", changePasswordReq.getEmail(), resp.getDescription());
                     return resp;
                 }).orElse(resp);
 
@@ -202,7 +214,8 @@ public class AuthService {
 
     }
 
-    private void sendEmailConfirmation(User user, String token) {
+    @Async
+    public void sendEmailConfirmation(User user, String token) {
         MessagePojo message = new MessagePojo();
 
 
@@ -216,8 +229,27 @@ public class AuthService {
 
         message.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
 
-        rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
+        try {
+            rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
+        } catch (Exception e) {
+            log.debug("Error occurred while pushing email confirmation", e);
+        }
+    }
 
+    @Async
+    public void sendActivityLog(String activityType, String email, String description) {
+
+        ActivityLog activityLog = new ActivityLog();
+        activityLog.setActivityType(activityType);
+        activityLog.setDescription(description);
+        activityLog.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
+        activityLog.setEmailAddress(email);
+        try {
+            rabbitTemplate.convertAndSend(appProperties.getActivityExchange(), appProperties.getActivityLogRoutingKey(), activityLog);
+            log.debug("Activity Logged successfully");
+        } catch (Exception e) {
+            log.debug("Error occurred while logging activity", e);
+        }
     }
 
 }
