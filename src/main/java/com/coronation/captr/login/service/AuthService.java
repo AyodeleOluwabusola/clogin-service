@@ -80,7 +80,7 @@ public class AuthService {
                             authResponse.setToken(handleTokenGeneration(user));
                             authResponse.setPrivileges(user.getPrivilegeList().stream().map(CTPrivilege::getCode).collect(Collectors.toList()));
 
-                            sendActivityLog("Logged In", user.getEmail(), authResponse.getDescription());
+                            sendActivityLog("LOGGED_IN", user.getEmail(), authResponse.getDescription());
 
                         },
                         () -> {
@@ -126,7 +126,7 @@ public class AuthService {
                     .map(user -> IResponseEnum.SUCCESS)
                     .orElse(IResponseEnum.INVALID_TOKEN);
 
-            sendActivityLog("EMAIL Confirmation", email, response.getDescription());
+            sendActivityLog("EMAIL_CONFIRMATION", email, response.getDescription());
 
             return response;
 
@@ -183,7 +183,7 @@ public class AuthService {
                     resp.setCode(IResponseEnum.SUCCESS.getCode());
                     resp.setDescription("Password changed successfully!!");
 
-                    sendActivityLog("PASSWORD CHANGE", changePasswordReq.getEmail(), resp.getDescription());
+                    sendActivityLog("PASSWORD_CHANGE", changePasswordReq.getEmail(), resp.getDescription());
                     return resp;
                 }).orElse(resp);
 
@@ -215,7 +215,7 @@ public class AuthService {
     }
 
     @Async
-    private void sendEmailConfirmation(User user, String token) {
+    public void sendEmailConfirmation(User user, String token) {
         MessagePojo message = new MessagePojo();
 
 
