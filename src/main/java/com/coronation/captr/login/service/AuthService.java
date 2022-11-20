@@ -5,6 +5,7 @@ import com.coronation.captr.login.entities.MessageTrail;
 import com.coronation.captr.login.entities.User;
 import com.coronation.captr.login.enums.IResponseEnum;
 import com.coronation.captr.login.interfaces.IResponse;
+import com.coronation.captr.login.pojo.ActivityLog;
 import com.coronation.captr.login.pojo.AuthRequest;
 import com.coronation.captr.login.pojo.AuthResponse;
 import com.coronation.captr.login.pojo.ChangePasswordReq;
@@ -78,6 +79,8 @@ public class AuthService {
                             authResponse.setToken(handleTokenGeneration(user));
                             authResponse.setPrivileges(user.getPrivilegeList().stream().map(CTPrivilege::getCode).collect(Collectors.toList()));
 
+                            sendActivityLog("Logged In", user.getEmail(), authResponse.getDescription());
+
                         },
                         () -> {
                             authResponse.setCode(IResponseEnum.ERROR.getCode());
@@ -117,9 +120,15 @@ public class AuthService {
                 .filter(trail -> StringUtils.equals(code, trail.getCode()));
 
         if (otpOptional.isPresent()) {
-            return iUserRespository.findByEmail(email)
+
+            IResponse response =  iUserRespository.findByEmail(email)
                     .map(user -> IResponseEnum.SUCCESS)
                     .orElse(IResponseEnum.INVALID_TOKEN);
+
+            sendActivityLog("EMAIL Confirmation", email, response.getDescription());
+
+            return response;
+
         }
 
 
@@ -172,6 +181,8 @@ public class AuthService {
                             passwordEncoder.encode(changePasswordReq.getConfirmPassword()), changePasswordReq.getEmail());
                     resp.setCode(IResponseEnum.SUCCESS.getCode());
                     resp.setDescription("Password changed successfully!!");
+
+                    sendActivityLog("PASSWORD CHANGE",changePasswordReq.getEmail(), resp.getDescription() );
                     return resp;
                 }).orElse(resp);
 
@@ -218,6 +229,17 @@ public class AuthService {
 
         rabbitTemplate.convertAndSend(appProperties.getNotificationExchange(), appProperties.getRoutingKey(), message);
 
+    }
+
+    private void sendActivityLog(String activityType, String email, String description) {
+        ActivityLog activityLog = new ActivityLog();
+        activityLog.setActivityType(activityType);
+        activityLog.setDescription(description);
+        activityLog.setRequestTime(LocalDateTime.now().format(Constants.DATE_TIME_FORMATTER));
+        activityLog.setEmailAddress(email);
+
+        rabbitTemplate.convertAndSend(appProperties.getActivityExchange(), appProperties.getActivityLogRoutingKey(), activityLog);
+        log.debug("Activity Logged successfully");
     }
 
 }

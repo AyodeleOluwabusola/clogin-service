@@ -21,4 +21,9 @@ public class AppProperties {
     private int emailConfirmationExpTime = 360;
     private String emailConfirmationLink= "localhost:8000/captr/access/verify-email?email=%s&code=%s";
 
+
+    private String activityQueue = "activity_log_queue";
+    private String activityExchange = "exchange.activity_log_exchange";
+    private String activityLogRoutingKey = "routing.activty_log";
+
 }
